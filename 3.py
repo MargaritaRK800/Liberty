@@ -1,111 +1,93 @@
 import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLabel, QLineEdit
 from PyQt5.QtGui import QPainter, QColor, QPen
-from math import sin, cos, radians, pi
+from math import pi, cos, sin
 from PyQt5.QtCore import Qt
 
-SCREEN_SIZE = [800, 800]
-LSystem = {}
-STACK = []
-graph_pos = []
-
-
-def readlsystem(filename):
-    try:
-        with open(filename, "rt", encoding='utf8') as f:
-            LSystem["COMMENTS"] = f.readline().strip()
-            LSystem["ANGLE"] = 360 / float(f.readline())
-            LSystem["AXIOM"] = f.readline().strip()
-            LSystem["THEOREMS"] = dict()
-            for line in f:
-                key, value = line.split()
-                LSystem["THEOREMS"][key] = value.strip()
-                # print(LSystem)
-            return True
-    except Exception as error:
-        print("Ошибка в файле с L-системой (%s): %s " % (filename, error))
-        LSystem.clear()
-        return False
-
-
-# Эволюция L-строки n-этапа по аксиоме и теоремам
-def buildlsystem(n):
-    result = LSystem["AXIOM"]
-    for i in range(n):
-        new = ""
-        for ch in result:
-            new += LSystem["THEOREMS"].get(ch, ch)
-        result = new
-    return result
-
-
-def xs(x):
-    return x + SCREEN_SIZE[0] // 2
-
-
-def ys(y):
-    return SCREEN_SIZE[1] // 2 - y
+SCREEN_SIZE = [500, 500]
 
 
 class Example(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.flag = False
+        self.draw.clicked.connect(self.drawf)
 
     def initUI(self):
         self.setGeometry(500, 500, *SCREEN_SIZE)
-        self.setWindowTitle('L - системы')
+        self.setWindowTitle('Квадрат - объектив')
+
+        # Ввод коэффициента
+        self.lbl1 = QLabel(self)
+        self.lbl1.setText("K = ")
+        self.lbl1.move(10, 20)
+
+        self.k = QLineEdit(self)
+        self.k.move(40, 20)
+        self.k.resize(50, 20)
+
+        # Ввод числа повторов
+        self.lbl2 = QLabel(self)
+        self.lbl2.setText("N = ")
+        self.lbl2.move(180, 20)
+
+        self.n = QLineEdit(self)
+        self.n.move(210, 20)
+        self.n.resize(50, 20)
+
+        # Ввод размера фигуры
+        self.lbl3 = QLabel(self)
+        self.lbl3.setText("M = ")
+        self.lbl3.move(300, 20)
+
+        self.m = QLineEdit(self)
+        self.m.move(330, 20)
+        self.m.resize(50, 20)
+
+        self.draw = QPushButton("Рисовать", self)
+        self.draw.move(350, 40)
+
         self.show()
 
-    def paintEvent(self, e):
-        qp = QPainter()
-        qp.begin(self)
-        self.qp = QPainter()
-        self.qp.begin(self)
-        self.drawL()
-        self.qp.end()
-        qp.end()
+    def xs(self, x):
+        return x + SCREEN_SIZE[0] // 2
 
-    def moveto(self, x, y):
-        self.graph_pos[0] = x
-        self.graph_pos[1] = y
+    def ys(self, y):
+        return SCREEN_SIZE[1] // 2 - y
 
-    def lineto(self, x, y):
-        self.qp.drawLine(*self.graph_pos, int(x), int(y))
-        self.graph_pos[0] = int(x)
-        self.graph_pos[1] = int(y)
-
-    # Построение L-системы по L-строке
-    def plotlsystem(self, lstring):
-        for ch in lstring:
-            if ch == "F":
-                self.POSITION[0] += self.step * cos(radians(self.POSITION[2]))
-                self.POSITION[1] += self.step * sin(radians(self.POSITION[2]))
-                self.lineto(xs(self.POSITION[0]), ys(self.POSITION[1]))
-            elif ch == "f":
-                self.POSITION[0] += self.step * cos(radians(self.POSITION[2]))
-                self.POSITION[1] += self.step * sin(radians(self.POSITION[2]))
-                self.lineto(xs(self.POSITION[0]), ys(self.POSITION[1]))
-            elif ch == "-":
-                self.POSITION[2] += LSystem["ANGLE"]
-            elif ch == "+":
-                self.POSITION[2] -= LSystem["ANGLE"]
-            elif ch == "[":
-                STACK.append(self.POSITION[:])
-            elif ch == "]":
-                if STACK:
-                    self.POSITION[0], self.POSITION[1], self.POSITION[2] = STACK.pop(-1)
-                    self.moveto(xs(self.POSITION[0]), ys(self.POSITION[1]))
-
-    def drawL(self):
-        readlsystem(input("Введите имя файла L-системы: "))
-        n = int(input("Введите этап эволюции: "))
-        x, y = int(input("Введите абсцисс-координату старта: ")), int(input("Введите ординат-координату старта: "))
-        self.step = int(input("Введите длину шага: "))
-        self.POSITION = [x, y, 0]
-        self.graph_pos = [xs(x), xs(y)]
-        self.plotlsystem(buildlsystem(n))
+    def drawf(self):
+        self.flag = True
         self.update()
+
+    def paintEvent(self, event):
+        if self.flag:
+            self.qp = QPainter()
+            self.qp.begin(self)
+            self.drawSq()
+            self.qp.end()
+
+    def scale(self, p1, p2, k):
+        return p1[0] + k * (p2[0] - p1[0]), p1[1] + k * (p2[1] - p1[1])
+
+    def create_polygon(self, nodes):
+        nodes2 = [(self.xs(node[0]), self.ys(node[1])) for node in nodes]
+        for i in range(-1, len(nodes2) - 1):
+            self.qp.drawLine(*nodes2[i], *nodes2[i + 1])
+
+    def drawSq(self):
+        if self.k.text() != '' and self.n.text() != '' and self.m.text() != '':
+            k = float(self.k.text())
+            n = int(self.n.text())
+            p = int(self.m.text())
+            RAD = 100
+            nodes = [(RAD * cos(i * 2 * pi / p), RAD * sin(i * 2 * pi / p)) for i in range(p)]
+            for i in range(n):
+                self.create_polygon(nodes)
+                new_nodes = []
+                for index in range(-1, len(nodes) - 1):
+                    new_nodes.append(self.scale(nodes[index], nodes[index + 1], k))
+                nodes = new_nodes[:]
 
 
 if __name__ == '__main__':
