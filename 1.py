@@ -1,56 +1,46 @@
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QLineEdit, QLabel, QSlider
+from PyQt5.QtGui import QPixmap
+from PIL import Image
 import sys
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QInputDialog
-from PyQt5.QtGui import QPainter, QColor
-import random, copy
 
 
 class Example(QWidget):
-
     def __init__(self):
         super().__init__()
+        self.current = "orig.jpg"
+        self.new_img = 'new.png'
         self.initUI()
-        self.draw = None
-        self.base = [80, 80, 120, 30]
+        self.alpha.valueChanged.connect(self.change_alpha)
 
     def initUI(self):
-        self.setGeometry(300, 300, 300, 400)
-        self.setWindowTitle('Цветной флаг')
+        self.setGeometry(400, 400, 400, 400)
+        self.setWindowTitle('Изменение прозрачности')
 
-        self.button_1 = QPushButton(self)
-        self.button_1.move(20, 40)
-        self.button_1.setText("Ввести количество цветов флага")
-        self.button_1.clicked.connect(self.run)
+        ## Изображение
+        self.pixmap = QPixmap(self.current)
+        self.image = QLabel(self)
+        self.image.move(80, 60)
+        self.image.resize(250, 250)
+        self.image.setPixmap(self.pixmap)
 
-        self.show()
+        self.alpha = QSlider(self)
+        self.alpha.move(20, 30)
+        self.alpha.resize(20, 300)
+        self.alpha.setMinimum(0)
+        self.alpha.setMaximum(255)
+        self.alpha.setValue(255)
 
-    def run(self):
-        ## Ввод количества цветов с помощью диалогового окна
-        i, okBtnPressed = QInputDialog.getInt(self, "Введите число цветов флага", "Сколько цветов?", 3, 1, 10, 1)
-        if okBtnPressed:
-            self.flag = None
-            self.draw = i
-
-    def paintEvent(self, event):
-        if self.draw:
-            qp = QPainter()
-            qp.begin(self)
-            self.drawFlag(qp)
-            qp.end()
-
-    def drawFlag(self, qp):
-        base = copy.copy(self.base)
-        for i in range(self.draw):
-            ## Генерация случайного цвета по RGB-схеме
-            rand_color = QColor(*[random.randrange(255) for _ in range(3)])
-            qp.setBrush(rand_color)
-            ## Рисуем полоску
-            qp.drawRect(*base)
-            ## Смещаемся вниз
-            base[1] += 30
-        self.draw = None
+    def change_alpha(self):
+        transp = int(self.alpha.value())
+        img = Image.open('orig.jpg')
+        img.putalpha(transp)
+        img.save(self.new_img)
+        self.pixmap = QPixmap(self.new_img)
+        self.image.setPixmap(self.pixmap)
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Example()
-    sys.exit(app.exec_())
+    ex.show()
+    sys.exit(app.exec())
